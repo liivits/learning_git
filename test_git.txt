@@ -1,0 +1,16 @@
+SELECT ICD.ICD10_L3_Desc as 'ICD-10 Level 3 description',
+COUNT (APCS.APCS_Ident) as 'Number of Admissions',
+SUM(COST.Net_SLA_Payment) as Spend
+FROM NHSE_SUSPlus_Live.dbo.tbl_Data_SEM_APCS as APCS
+INNER JOIN NHSE_SUSPlus_Live.dbo.tbl_Data_SEM_APCS_1920_COST as COST on APCS.APCS_Ident = COST.APCS_Ident
+INNER JOIN NHSE_SUSPlus_Live.dbo.tbl_Data_SEM_APCS_1920_Der as DER on APCS.APCS_Ident = DER.APCS_Ident
+INNER JOIN NHSE_Reference.dbo.tbl_Ref_ClinCode_ICD10 as ICD on DER.Spell_Primary_Diagnosis=ICD.ICD10_L4_Code
+INNER JOIN [NHSE_Sandbox_RightCare].[ref].practice_CCG_year_lookup b on (COALESCE(CASE WHEN APCS.GP_Practice_SUS NOT LIKE 'V81%' THEN APCS.GP_Practice_SUS END, APCS.GP_Practice_Code, 'V81998') = b.practice) and CCGFlag=1
+WHERE left(DER.Spell_PBC,7) = 'PBC0211' --11A,11B and 11X for resp
+AND APCS.Der_Activity_Month >= '201901' and APCS.Der_Activity_Month <= '201912'
+AND APCS.Sex IN ('1', '2')
+AND (((COALESCE(APCS.Age_At_Start_of_Spell_SUS, APCS.Age_At_CDS_Activity_Date)) between 0 and 120)
+or (APCS.Age_at_start_of_Spell_SUS between 7001 and 7007))
+AND COST.Cost_Type LIKE 'Tariff%'
+GROUP BY ICD.ICD10_L3_Desc
+ORDER BY [Number of Admissions] DESC, Spend DESC
